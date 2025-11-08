@@ -1,3 +1,4 @@
+// mcp-server/tools/figmaToHTML.js
 import fs from "fs";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
@@ -14,21 +15,21 @@ export default {
     if (!apiKey) throw new Error("❌ FIGMA_API_KEY .env içinde tanımlı değil!");
     if (!key) throw new Error("❌ FIGMA_FILE_KEY belirtilmedi!");
 
-    console.log(" Figma verisi çekiliyor...");
+    console.log("... Figma verisi çekiliyor...");
 
     const res = await fetch(`https://api.figma.com/v1/files/${key}`, {
       headers: { "X-Figma-Token": apiKey },
     });
 
     if (!res.ok) {
-      throw new Error(` Figma API hatası: ${res.statusText}`);
+      throw new Error(` Fignma API hatası: ${res.statusText}`);
     }
 
     const data = await res.json();
     console.log(" Figma dosyası alındı:", data.name);
 
     let html = `<div class="figma-root">\n`;
-    let css = `.figma-root { position: relative; min-height: 100vh; background: #f9f9f9; overflow: hidden; }\n`;
+    let css = `.figma-root { position: relative; min-height: 100vh; overflow: hidden; }\n`;
 
     function rgba(c) {
       if (!c) return "transparent";
@@ -38,31 +39,51 @@ export default {
 
     function traverse(node) {
       const box = node.absoluteBoundingBox;
-      if (!box) return;
+      if (!box) {
+         // Kutusu olmayan (örn. 'GROUP') elemanların çocuklarını yine de işle
+         if (node.children) node.children.forEach(traverse);
+         return;
+      }
 
+      // --- YENİ EKLENEN KISIM: FRAME (Çerçeve) ---
+      // FRAME'ler genellikle arka plan rengine sahiptir
+      if (node.type === "FRAME") {
+        html += `<div style="position:absolute; left:${box.x}px; top:${box.y}px; width:${box.width}px; height:${box.height}px; background:${rgba(node.fills?.[0]?.color)};"></div>\n`;
+      }
+      
       if (node.type === "RECTANGLE") {
         html += `<div style="position:absolute; left:${box.x}px; top:${box.y}px; width:${box.width}px; height:${box.height}px; background:${rgba(node.fills?.[0]?.color)};"></div>\n`;
       }
 
       if (node.type === "TEXT") {
         const text = node.characters?.replace(/\n/g, "<br/>") || "";
-        html += `<p style="position:absolute; left:${box.x}px; top:${box.y}px; font-size:${node.style?.fontSize || 16}px; color:${rgba(node.fills?.[0]?.color)};">${text}</p>\n`;
+        const style = node.style;
+        html += `<p style="position:absolute; left:${box.x}px; top:${box.y}px; font-size:${style?.fontSize || 16}px; color:${rgba(node.fills?.[0]?.color)}; font-weight:${style?.fontWeight || 400};">${text}</p>\n`;
       }
 
       if (node.fills?.some(f => f.type === "IMAGE")) {
-        html += `<img src="#" alt="Figma Image" style="position:absolute; left:${box.x}px; top:${box.y}px; width:${box.width}px; height:${box.height}px;">\n`;
+        // Not: Bu, resim URL'sini almak için ek bir API çağrısı gerektirir, şimdilik yer tutucu bırakıyoruz.
+        html += `<img src="#" alt="Figma Image (URL not implemented)" style="position:absolute; left:${box.x}px; top:${box.y}px; width:${box.width}px; height:${box.height}px;">\n`;
       }
 
+      // Çocuk elemanları da işle
       if (node.children) node.children.forEach(traverse);
     }
 
-    traverse(data.document);
+    // --- DEĞİŞEN KISIM ---
+    // Tüm belge yerine sadece ilk sayfadan (children[0]) başla
+    if (data.document.children && data.document.children[0]) {
+        traverse(data.document.children[0]);
+    } else {
+        console.warn("Figma belgesinde sayfa bulunamadı.");
+    }
+
     html += `</div>`;
 
     const outputPath = "output/figmaToHTML.html";
     fs.writeFileSync(outputPath, html);
     console.log(` Dönüştürme tamamlandı! ➜ ${outputPath}`);
 
-    return { html, css };
+    return { html, css }; // CSS'i şu an göndermiyoruz ama ileride kullanılabilir
   },
 };
