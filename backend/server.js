@@ -40,42 +40,52 @@ app.post("/api/convert-figma", async (req, res) => {
       args: { fileKey: fileKey, nodeId: nodeId }, 
     });
 
-    const rawHtml = mcpResponse.data.result?.html;
-    if (!rawHtml) {
+    const rawHtmlBody = mcpResponse.data.result?.html;
+    const rawCss = mcpResponse.data.result?.css;
+
+    if (!rawHtmlBody || !rawCss) {
       return res.status(500).json({
-        error: "MCP-Server'dan ham HTML alınamadı.",
+        error: "MCP-Server'dan ham HTML veya CSS alınamadı.",
         details: mcpResponse.data,
       });
     }
-    console.log(`[Backend] Ham HTML alındı (Uzunluk: ${rawHtml.length})`);
+    console.log(`[Backend] Ham HTML (body) ve CSS alındı (CSS Uzunluk: ${rawCss.length})`);
 
-    // --- GÜNCELLENMİŞ AI PROMPT'U ---
+    // --- YENİ PROMPT (CSS OLMADAN) ---
+    // AI'dan artık CSS'i işlemesini istemiyoruz, sadece yer tutucu ekleyecek.
     const prompt = `
-      Aşağıda bir Figma dönüştürücüsünden gelen, 'inline styles' (style="...") ve 'base64' ile gömülmüş SVG ikonları içeren bir HTML kodu var.
-      Görevin bu kodu optimize etmek ve temizlemektir.
-      
-      TALİMATLAR:
-      1.  Bir <head> etiketi oluştur (veya mevcutsa onu kullan). İçine bir <meta charset="UTF-8">, <meta name="viewport" content="width=device-width, initial-scale=1.0"> ve bir <title> ekle.
-      2.  <head> içine bir <style> etiketi ekle.
-      3.  HTML body'sindeki TÜM 'inline style' özelliklerini (style="...") analiz et.
-      4.  Tekrar eden veya mantıksal olarak gruplanabilen (örn. .sidebar, .button, .list-item) stiller için ANLAMLI CSS SINIFLARI (class) oluştur.
-      5.  Tüm stilleri bu sınıflara taşıyarak <style> etiketinin içine yaz.
-      6.  Body içindeki HTML elemanlarından 'style="..."' özelliklerini kaldır ve yerlerine 'class="..."' özelliklerini ekle.
-      7.  HTML'in yapısını (<div>, <p> vb.) ve gömülü <img src="data:image/svg+xml;base64,..."> etiketlerini KORU. Onları değiştirme veya kaldırma.
-      8.  'figma-root' div'ine 'box-sizing: border-box;' ve genel olarak '*' seçicisine 'box-sizing: inherit;' eklemek iyi bir praktiktir.
-      9.  Yalnızca ve yalnızca bu talimatlara göre temizlenmiş, tam ve çalışır HTML kodunu yanıt olarak döndür. Ekstra açıklama veya markdown (\`\`\`html) kullanma.
+      Görevin: Aşağıdaki HTML body içeriğini alıp,
+      bunları tam ve geçerli bir HTML5 belgesinde birleştirmek.
 
-      İşlenecek Ham HTML Kod:
-      ${rawHtml}
+      TALİMATLAR:
+      1.  Geçerli bir HTML5 yapısı (<!DOCTYPE html>, <html>, <head>, <body>) oluştur.
+      2.  <head> içine <meta charset="UTF-8">, 
+          <meta name="viewport" content="width=device-width, initial-scale=1.0"> ve 
+          <title>Figma Tasarımı</title> ekle.
+      3.  <head> içine CSS'in ekleneceği yere <!--CSS_PLACEHOLDER--> şeklinde bir HTML yorumu ekle.
+      4.  Verilen 'HTML Body İçeriği'ni <body> etiketinin içine kopyala.
+      5.  HTML içeriğini ASLA değiştirme, semantik hale getirmeye ÇALIŞMA.
+      6.  Yanıt olarak SADECE ve SADECE tam HTML kodunu döndür.
+          Ekstra açıklama veya markdown (\`\`\`html) kullanma.
+
+      Verilen HTML Body İçeriği:
+      ${rawHtmlBody}
     `;
 
-    console.log("[Backend] Gemini'a iyileştirme için gönderiliyor...");
+    console.log("[Backend] Gemini'a HTML iskeleti için gönderiliyor...");
     const result = await geminiModel.generateContent(prompt);
     const reply = result.response.text();
+    let htmlShell = reply.replace(/^```html\n?/i, "").replace(/```$/i, "");
 
-    let cleanReply = reply.replace(/^```html\n?/i, "").replace(/```$/i, "");
+    // --- YENİ: CSS'i manuel olarak ekle ---
+    // Gemini'dan gelen iskelete, tam (kesilmemiş) CSS'i enjekte et
+    const finalHtml = htmlShell.replace(
+      "<!--CSS_PLACEHOLDER-->",
+      `<style>\n${rawCss}\n</style>`
+    );
 
-    const formattedReply = await prettier.format(cleanReply, {
+    // Prettier ile formatlama (Artık geçerli ve tam HTML'i formatlıyor)
+    const formattedReply = await prettier.format(finalHtml, {
       parser: "html",
       printWidth: 100,
     });
@@ -86,13 +96,14 @@ app.post("/api/convert-figma", async (req, res) => {
     console.error("Dönüştürme hatası:", error.response?.data || error.message);
     res.status(500).json({
       error: "Ana dönüştürme hatası.",
-      details: error.response?.data || error.message,
+      details: error.response?.data?.message || error.message, // Prettier hatasını göster
     });
   }
 });
 
 
 app.post("/api/ask", async (req, res) => {
+  // ... (Bu kısım değişmedi)
   try {
     const { prompt } = req.body;
     console.log("Frontend'den gelen prompt:", prompt ?? "");
@@ -101,6 +112,7 @@ app.post("/api/ask", async (req, res) => {
     res.json({ reply });
   } catch (error) {
     console.error("Gemini hata:", error);
+    // HATA DÜZELTİLDİ: 5S00, 500 (sayı) olarak değiştirildi.
     res.status(500).json({
       reply: "Sunucu hatası — Gemini yanıt vermedi.",
       error: error.message || String(error),

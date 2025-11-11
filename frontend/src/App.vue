@@ -41,7 +41,8 @@
       <div class="flex justify-between items-center mb-2">
         <h2 class="text-xl font-semibold">Live Preview:</h2>
         <Button
-          label="Open Preview in New Tab"
+          label="Önizlemeyi Yeni Sekmede Aç"
+          icon="pi pi-external-link"
           severity="info"
           @click="openPreviewInNewTab"
           class="p-button-sm"
