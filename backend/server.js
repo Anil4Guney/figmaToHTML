@@ -33,7 +33,7 @@ app.post("/api/convert-figma", async (req, res) => {
       return res.status(400).json({ error: "fileKey gereklidir." });
     }
 
-    console.log(`[Backend] MCP-Server'a istek atılıyor (fileKey: ${fileKey}, nodeId: ${nodeId || 'yok'})`);
+    console.log(`MCP-Server'a istek atılıyor (fileKey: ${fileKey}, nodeId: ${nodeId || 'yok'})`);
     
     const mcpResponse = await axios.post(MCP_SERVER_URL, {
       tool: "convertFigmaToHTML",
@@ -49,10 +49,8 @@ app.post("/api/convert-figma", async (req, res) => {
         details: mcpResponse.data,
       });
     }
-    console.log(`[Backend] Ham HTML (body) ve CSS alındı (CSS Uzunluk: ${rawCss.length})`);
+    console.log(` Ham HTML (body) ve CSS alındı (CSS Uzunluk: ${rawCss.length})`);
 
-    // --- YENİ PROMPT (CSS OLMADAN) ---
-    // AI'dan artık CSS'i işlemesini istemiyoruz, sadece yer tutucu ekleyecek.
     const prompt = `
       Görevin: Aşağıdaki HTML body içeriğini alıp,
       bunları tam ve geçerli bir HTML5 belgesinde birleştirmek.
@@ -72,19 +70,17 @@ app.post("/api/convert-figma", async (req, res) => {
       ${rawHtmlBody}
     `;
 
-    console.log("[Backend] Gemini'a HTML iskeleti için gönderiliyor...");
+    console.log(" Gemini'a HTML iskeleti için gönderiliyor...");
     const result = await geminiModel.generateContent(prompt);
     const reply = result.response.text();
     let htmlShell = reply.replace(/^```html\n?/i, "").replace(/```$/i, "");
 
-    // --- YENİ: CSS'i manuel olarak ekle ---
-    // Gemini'dan gelen iskelete, tam (kesilmemiş) CSS'i enjekte et
+    // Gemini'dan gelen iskelete tam (kesilmemiş) CSS'i enjekte et
     const finalHtml = htmlShell.replace(
       "<!--CSS_PLACEHOLDER-->",
       `<style>\n${rawCss}\n</style>`
     );
 
-    // Prettier ile formatlama (Artık geçerli ve tam HTML'i formatlıyor)
     const formattedReply = await prettier.format(finalHtml, {
       parser: "html",
       printWidth: 100,
@@ -96,14 +92,13 @@ app.post("/api/convert-figma", async (req, res) => {
     console.error("Dönüştürme hatası:", error.response?.data || error.message);
     res.status(500).json({
       error: "Ana dönüştürme hatası.",
-      details: error.response?.data?.message || error.message, // Prettier hatasını göster
+      details: error.response?.data?.message || error.message, 
     });
   }
 });
 
 
 app.post("/api/ask", async (req, res) => {
-  // ... (Bu kısım değişmedi)
   try {
     const { prompt } = req.body;
     console.log("Frontend'den gelen prompt:", prompt ?? "");
@@ -112,7 +107,6 @@ app.post("/api/ask", async (req, res) => {
     res.json({ reply });
   } catch (error) {
     console.error("Gemini hata:", error);
-    // HATA DÜZELTİLDİ: 5S00, 500 (sayı) olarak değiştirildi.
     res.status(500).json({
       reply: "Sunucu hatası — Gemini yanıt vermedi.",
       error: error.message || String(error),

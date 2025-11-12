@@ -12,7 +12,7 @@
       />
       <InputText
         v-model="nodeId"
-        placeholder="Enter Node ID (Optional)"
+        placeholder="Enter Node ID )"
         class="input-node"
         @keyup.enter="convertFigma"
       />
@@ -34,7 +34,7 @@
       <p><strong>Hata Oluştu:</strong> {{ error }}</p>
     </div>
 
-    <!-- Sonuçlar: Önizleme ve Kod -->
+    <!-- Sonuçlar Önizleme ve Kod -->
     <div v-if="response && !isLoading" class="mt-6">
       
       <!-- Canlı Önizleme Başlığı ve Yeni Sekme Butonu -->
@@ -65,7 +65,7 @@
           class="w-full"
         />
         
-        <!-- YENİ: HTML ve CSS için TabView -->
+        <!--  HTML ve CSS için TabView -->
         <TabView v-if="showCode" class="mt-2">
           <TabPanel header="HTML">
             <pre class="code-display">
@@ -88,7 +88,6 @@
 import { ref } from "vue";
 import Button from "primevue/button";
 import InputText from "primevue/inputtext";
-// YENİ: TabView bileşenlerini import et
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
 
@@ -99,7 +98,7 @@ const isLoading = ref(false);
 const error = ref(null);
 const showCode = ref(false); 
 
-// YENİ: Ayrıştırılmış HTML ve CSS için referanslar
+// Ayrıştırılmış HTML ve CSS için referanslar
 const htmlContent = ref("");
 const cssContent = ref("");
 
@@ -111,8 +110,8 @@ async function convertFigma() {
   isLoading.value = true;
   error.value = null;
   response.value = "";
-  htmlContent.value = ""; // Temizle
-  cssContent.value = ""; // Temizle
+  htmlContent.value = ""; 
+  cssContent.value = ""; 
   showCode.value = false; 
 
   try {
@@ -134,7 +133,6 @@ async function convertFigma() {
     
     if (data.optimizedHtml) {
       response.value = data.optimizedHtml; // iframe'in kullanması için tam yanıtı sakla
-      // YENİ: HTML'i ayrıştır ve referansları doldur
       parseHtmlAndSetContent(data.optimizedHtml);
     } else {
       throw new Error("Sunucudan beklenen optimizedHtml verisi gelmedi.");
@@ -149,7 +147,7 @@ async function convertFigma() {
   }
 }
 
-// YENİ FONKSİYON: HTML'i ayrıştırıp CSS ve HTML içeriğini ayıran fonksiyon
+// HTML'i ayrıştırıp CSS ve HTML içeriğini ayıran fonksiyon
 function parseHtmlAndSetContent(htmlString) {
   try {
     // 1. CSS içeriğini <style>...</style> etiketleri arasından al
@@ -178,7 +176,7 @@ function parseHtmlAndSetContent(htmlString) {
   }
 }
 
-// YENİ FONKSİYON: Önizlemeyi yeni sekmede açar
+// Önizlemeyi yeni sekmede açar
 function openPreviewInNewTab() {
   if (!response.value) return;
 
@@ -227,7 +225,7 @@ function openPreviewInNewTab() {
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* YENİ: <pre> etiketleri için ortak stil */
+/* <pre> etiketleri için ortak stil */
 .code-display {
   font-family: "Fira Code", monospace;
   background: #f7f7ff;
@@ -236,7 +234,7 @@ function openPreviewInNewTab() {
   white-space: pre-wrap; 
   color: #111;
   word-break: break-all; 
-  max-height: 400px; /* Kod kutularına maksimum yükseklik */
-  overflow-y: auto; /* Gerekirse kaydırma çubuğu çıkar */
+  max-height: 400px; 
+  overflow-y: auto; /
 }
 </style>

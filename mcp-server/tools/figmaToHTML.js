@@ -6,7 +6,7 @@ dotenv.config();
 const FIGMA_API_KEY = process.env.FIGMA_API_KEY;
 if (!FIGMA_API_KEY) throw new Error(" FIGMA_API_KEY .env içinde tanımlı değil!");
 
-// --- CSS Stillerini depolamak için ---
+// CSS Stillerini depolamak için 
 let cssStore = {};
 
 export default {
@@ -17,13 +17,13 @@ export default {
     const key = fileKey || process.env.FIGMA_FILE_KEY;
     if (!key) throw new Error(" FIGMA_FILE_KEY belirtilmedi!");
 
-    // --- 1. CSS Store'u her çalıştırmada sıfırla ---
+    //  CSS Store'u her çalıştırmada sıfırla 
     cssStore = {};
 
-    // --- 2. FIGMA'DAN ANA YAPIYI ÇEK ---
+    //  FIGMA'DAN ANA YAPIYI ÇEK 
     const rootNode = await getFigmaNode(key, nodeId);
     
-    // --- 3. YAPIYI GEZEREK HTML OLUŞTUR ve CSS'i DOLDUR ---
+    //  YAPIYI GEZEREK HTML OLUŞTUR ve CSS'i DOLDUR 
     const isRootNodeAutoLayout = rootNode.layoutMode === 'HORIZONTAL' || rootNode.layoutMode === 'VERTICAL';
     
     let childrenHtml = "";
@@ -39,7 +39,7 @@ export default {
       });
     }
 
-    // --- 4. KÖK (ROOT) ELEMENTİN STİLLERİNİ VE SINIFINI AYARLA ---
+    // KÖK (ROOT) ELEMENTİN STİLLERİNİ VE SINIFINI AYARLA 
     const rootClassName = `node-${rootNode.id.replace(/:/g, '-')}`;
     const rootStyles = getRootStyles(rootNode, isRootNodeAutoLayout);
     // Kök stilleri de cssStore'a ekle
@@ -47,20 +47,20 @@ export default {
                                         .map(([key, value]) => `${key}: ${value};`)
                                         .join(' ');
 
-    // --- 5. CSS Store'u tek bir string'e dönüştür ---
+    // CSS Store'u tek bir string'e dönüştür 
     let cssString = "";
     for (const [className, styles] of Object.entries(cssStore)) {
       cssString += `${className} {\n  ${styles}\n}\n`;
     }
 
-    // --- 6. HTML ve CSS'i döndür ---
+    // HTML ve CSS'i döndür 
     const finalHtml = `<div class="${rootClassName}">\n${childrenHtml}\n</div>`;
     
     return { html: finalHtml, css: cssString }; 
   },
 };
 
-// --- YARDIMCI FONKSİYONLAR ---
+//  YARDIMCI FONKSİYONLAR 
 
 async function getFigmaNode(key, nodeId) {
   let figmaApiUrl = `https://api.figma.com/v1/files/${key}`;
@@ -68,18 +68,18 @@ async function getFigmaNode(key, nodeId) {
   if (nodeId) {
       processedNodeId = decodeURIComponent(nodeId.trim());
       if (processedNodeId.includes('-') && !processedNodeId.includes(':')) {
-          console.log(`[figmaToHtml] Node ID formatı '-' -> ':' olarak düzeltiliyor.`);
+          console.log(` Node ID formatı '-' -> ':' olarak düzeltiliyor.`);
           processedNodeId = processedNodeId.replace(/-/g, ':'); // Tüm tireleri değiştir
       } else if (processedNodeId.includes('.') && !processedNodeId.includes(':')) {
-           console.log(`[figmaToHtml] Node ID formatı '.' -> ':' olarak düzeltiliyor.`);
+           console.log(` Node ID formatı '.' -> ':' olarak düzeltiliyor.`);
            processedNodeId = processedNodeId.replace(/\./g, ':'); // Tüm noktaları değiştir
       }
   }
   if (processedNodeId) {
     figmaApiUrl += `/nodes?ids=${processedNodeId}`;
-    console.log(`[figmaToHtml] Spesifik node için istek atılıyor: ${processedNodeId}`);
+    console.log(` Spesifik node için istek atılıyor: ${processedNodeId}`);
   } else {
-    console.log(`[figmaToHtml] Tam dosya için istek atılıyor: ${key}`);
+    console.log(` Tam dosya için istek atılıyor: ${key}`);
   }
   const res = await fetch(figmaApiUrl, { headers: { "X-Figma-Token": FIGMA_API_KEY } });
   if (!res.ok) throw new Error(`Figma API hatası (files/nodes): ${res.statusText}`);
@@ -96,12 +96,11 @@ async function getFigmaNode(key, nodeId) {
   }
 }
 
-// --- YENİDEN YAZILMIŞ getRootStyles FONKSİYONU ---
 function getRootStyles(rootNode, isRootNodeAutoLayout) {
   const styles = {};
   styles['position'] = 'relative';
   styles['overflow'] = 'hidden';
-  styles['margin'] = 'auto'; // Konteynırı her zaman ortala
+  styles['margin'] = 'auto'; 
 
   if (rootNode.fills && rootNode.fills[0] && rootNode.fills[0].type === 'SOLID') {
     styles['background'] = rgba(rootNode.fills[0].color);
@@ -112,7 +111,7 @@ function getRootStyles(rootNode, isRootNodeAutoLayout) {
   }
   
   if (isRootNodeAutoLayout) {
-      // --- Auto-Layout Kök Öğesi (Finance Projesi gibi) ---
+      //  Auto-Layout Kök Öğesi 
       styles['display'] = 'flex';
       styles['flex-direction'] = rootNode.layoutMode === 'HORIZONTAL' ? 'row' : 'column';
       if (rootNode.itemSpacing) styles['gap'] = `${rootNode.itemSpacing}px`;
@@ -120,27 +119,23 @@ function getRootStyles(rootNode, isRootNodeAutoLayout) {
       styles['justify-content'] = mapAlign(rootNode.primaryAxisAlignItems);
       styles['align-items'] = mapAlign(rootNode.counterAxisAlignItems);
 
-      // --- DÜZELTİLMİŞ GENİŞLİK MANTIĞI ---
       if (rootNode.layoutSizingHorizontal === 'HUG') {
-        styles['width'] = 'auto'; // İçeriğe göre sar
+        styles['width'] = 'auto'; 
       } else if (rootNode.layoutSizingHorizontal === 'FIXED') {
-        styles['width'] = `${rootNode.absoluteBoundingBox.width}px`; // Sabit
-      } else { // 'FILL'
-        styles['width'] = '100%'; // Ebeveyni doldur (veya %100 ol)
+        styles['width'] = `${rootNode.absoluteBoundingBox.width}px`; 
+      } else { 
+        styles['width'] = '100%'; 
       }
-
-      // --- DÜZELTİLMİŞ YÜKSEKLİK MANTIĞI ---
       if (rootNode.layoutSizingVertical === 'HUG') {
-          styles['height'] = 'auto'; // İçeriğe göre sar
+          styles['height'] = 'auto';
       } else if (rootNode.layoutSizingVertical === 'FIXED') {
-           styles['height'] = `${rootNode.absoluteBoundingBox.height}px`; // Sabit
-      } else { // 'FILL'
-          // Kök öğe 'FILL' ise, genellikle tüm ekranı kaplamasını isteriz
+           styles['height'] = `${rootNode.absoluteBoundingBox.height}px`; 
+      } else { 
           styles['min-height'] = '100vh'; 
       }
 
   } else if (rootNode.absoluteBoundingBox) {
-      // --- Auto-Layout DEĞİLSE (ByNoGame Projesi gibi) ---
+      // Auto-Layout DEĞİLSE
       // Sabit boyutları uygula
       styles['width'] = `${rootNode.absoluteBoundingBox.width}px`;
       styles['height'] = `${rootNode.absoluteBoundingBox.height}px`;
@@ -148,7 +143,7 @@ function getRootStyles(rootNode, isRootNodeAutoLayout) {
   
   return styles;
 }
-// --- getRootStyles FONKSİYONU SONU ---
+
 
 
 function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLayoutParentBox = null) { 
@@ -168,12 +163,9 @@ function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLay
 
   if (isParentAutoLayout) {
     
-    // --- Auto-Layout içindeki mutlak konumlandırma ---
+    // Auto-Layout içindeki mutlak konumlandırma
     if (node.layoutPositioning === 'ABSOLUTE') {
       styles['position'] = 'absolute';
-      
-      // Koordinatlar en yakın Auto-Layout ebeveynine (autoLayoutParentBox) göre olmalıdır.
-      // DÜZELTME: refBox her zaman 'parentBox' olmalıdır.
       const refBox = parentBox; 
       
       styles['left'] = `${box.x - (refBox ? refBox.x : 0)}px`;
@@ -181,14 +173,14 @@ function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLay
       styles['width'] = `${box.width}px`;
       styles['height'] = `${box.height}px`;
     } else {
-      // --- Normal Auto-Layout akışı ---
+      //  Normal Auto-Layout akışı 
       styles['position'] = 'relative'; 
       if (node.layoutSizingHorizontal === 'FILL') {
         styles['flex-grow'] = '1';
         styles['width'] = 'auto'; 
       } else if (node.layoutSizingHorizontal === 'HUG') {
         styles['width'] = 'auto'; 
-      } else { // FIXED
+      } else { 
         styles['width'] = `${box.width}px`;
       }
       
@@ -199,7 +191,7 @@ function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLay
         styles['height'] = 'auto'; 
       } else if (node.layoutSizingVertical === 'HUG') {
         styles['height'] = 'auto'; 
-      } else { // FIXED
+      } else { 
         styles['height'] = `${box.height}px`;
       }
       
@@ -220,7 +212,7 @@ function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLay
     }
     
   } else {
-    // Ebeveyn (parent) Auto-Layout DEĞİLSE (ByNoGame gibi)
+    // Auto-Layout DEĞİLSE
     styles['position'] = 'absolute';
     styles['left'] = `${box.x - (parentBox ? parentBox.x : 0)}px`;
     styles['top'] = `${box.y - (parentBox ? parentBox.y : 0)}px`;
@@ -236,7 +228,7 @@ function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLay
     styles['justify-content'] = mapAlign(node.primaryAxisAlignItems);
     styles['align-items'] = mapAlign(node.counterAxisAlignItems);
     
-    // DÜZELTME: 'HUG' (Sarma) ise, flex-grow'u engelle
+    // HUG (Sarma) ise flex-grow'u engelle
     if(node.layoutSizingHorizontal === 'HUG') {
         styles['width'] = 'auto';
         styles['flex-grow'] = '0';
@@ -308,7 +300,7 @@ function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLay
         html += traverse(
           child, 
           isThisNodeAutoLayout, 
-          isThisNodeAutoLayout ? node.layoutMode : null, // parentLayoutMode
+          isThisNodeAutoLayout ? node.layoutMode : null, 
           box, 
           newAutoLayoutParentBox
         ); 
@@ -325,7 +317,6 @@ function traverse(node, isParentAutoLayout, parentLayoutMode, parentBox, autoLay
   return html;
 }
 
-// ... (isIconNode, sanitizeNameForPath, rgba, mapAlign fonksiyonları değişmedi) ...
 
 function isIconNode(node) {
     if (node.type === 'VECTOR') return true;
